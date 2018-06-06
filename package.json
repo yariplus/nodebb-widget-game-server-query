@@ -1,0 +1,28 @@
+{
+  "name": "nodebb-widget-game-server-query",
+  "version": "1.0.0-beta",
+  "description": "Game server query widget.",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yariplus/nodebb-widget-game-server-query"
+  },
+  "keywords": [
+    "nodebb",
+    "widget",
+    "game",
+    "server",
+    "query"
+  ],
+  "license": "(CC0-1.0 OR MIT)",
+  "dependencies": {
+    "gamedig": "*"
+  },
+  "author": {
+    "name": "Timothy Fike",
+    "email": "tafike@gmail.com"
+  },
+  "nbbpm": {
+    "compatibility": "^1.0.0"
+  }
+}

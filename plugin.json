@@ -1,0 +1,12 @@
+{
+  "id": "nodebb-widget-game-server-query",
+  "name": "Game Server Query Widget",
+  "description": "Adds a widget that queries a game server.",
+  "library": "./index.js",
+  "hooks": [
+    { "hook": "static:app.load", "method": "load" },
+    { "hook": "filter:widgets.getWidgets", "method": "getWidgets" },
+    { "hook": "filter:widget.render:gsq", "method": "renderWidget" }
+  ],
+  "templates": "."
+}
