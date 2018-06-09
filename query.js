@@ -9,17 +9,22 @@ process.on('message', (data) => {
 
   data = JSON.parse(data)
 
+  // Reduce query responses to a db object and send it back to the parent.
   async.reduce(data, {}, (obj, widget, next) => {
-    let { type, host } = widget
+    let { type, host, port, port_query } = widget
+    let options = { type, host }
 
-    query({type, host}, (err, state) => {
-      if (err) return next(null, obj)
+    // Optional port inputs.
+    if (port) options.port = port
+    if (port_query) options.port_query = port_query
 
-      host = host.replace(/[.:]/g, '')
+    const key = `${type}${host.replace(/[.:]/g, '')}${port||''}${port_query||''}`
 
-      if (obj[`${type}${host}`]) return next(null, obj)
+    // Don't double query.
+    if (obj[key]) return next(null, obj)
 
-      obj[`${type}${host}`] = JSON.stringify(state)
+    query(options, (err, state) => {
+      if (!err) obj[key] = JSON.stringify(state)
 
       next(null, obj)
     })

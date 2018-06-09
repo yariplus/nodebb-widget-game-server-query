@@ -37,16 +37,23 @@ exports.load = (data, next) => {
     }, '')
   })
 
+  // Clear any previous query interval.
   if (interval) clearInterval(interval)
+
+  // Query all hosts every 15 seconds.
   interval = setInterval(() => {
+
+    // Get all widgets.
     widgetAdmin.get((err, data) => {
       if (err) return console.log(err)
 
+      // Filter gsq widgets.
+      // TODO: Need to make this less messy.
       data = data.areas.reduce((widgets, area) => {
-        return widgets.concat(area.data.filter(widget => widget.widget === 'gsq').map(widget => {
-          const { type, host } = widget.data
+        return widgets.concat(area.data.filter(widget => widget.widget === 'gsq').filter(widget => widget.data.type && widget.data.host).map(widget => {
+          const { type, host, port, port_query } = widget.data
 
-          return { type, host }
+          return { type, host, port, port_query }
         }))
       }, [])
 
@@ -81,17 +88,19 @@ exports.getWidgets = (widgets, next) => {
 }
 
 exports.renderWidget = (widget, next) => {
-  let { type, host, template } = widget.data
+  let { type, host, port, port_query, template } = widget.data
 
   if (!type || !host) return next(new Error('No host information for GSQ widget.'))
 
   host = host.replace(/[.:]/g, '')
 
-  db.getObjectField('gsq', `${type}${host}`, (err, state) => {
+  const key = `${type}${host}${port||''}${port_query||''}`
+
+  db.getObjectField('gsq', key, (err, state) => {
     if (err || !state) {
       // TODO
       widget.html = ''
-      console.log(`No template ${type}${host}`)
+      console.log(`No template ${key}`)
       return next(null, widget)
     }
 
