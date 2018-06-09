@@ -8,7 +8,7 @@ const benchpress = require.main.require('benchpressjs')
 const db = require.main.require('./src/database')
 const widgetAdmin = require.main.require('./src/widgets/admin')
 
-let app, interval, games = []
+let app, interval, child, games = []
 
 exports.load = (data, next) => {
   app = data.app
@@ -40,6 +40,12 @@ exports.load = (data, next) => {
   // Clear any previous query interval.
   if (interval) clearInterval(interval)
 
+  // Start child process.
+  if (!child) child = fork(`${__dirname}/query.js`)
+
+  // Get status messages from child.
+  child.on('message', data => db.setObject('gsq', JSON.parse(data)))
+
   // Query all hosts every 15 seconds.
   interval = setInterval(() => {
 
@@ -59,10 +65,7 @@ exports.load = (data, next) => {
 
       data = JSON.stringify(data)
 
-      let cp = fork(`${__dirname}/query.js`)
-
-      cp.send(data)
-      cp.on('message', data => db.setObject('gsq', JSON.parse(data)))
+      child.send(data)
     })
   }, 15000)
 

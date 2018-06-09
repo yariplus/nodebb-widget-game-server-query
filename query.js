@@ -28,8 +28,5 @@ process.on('message', (data) => {
 
       next(null, obj)
     })
-  }, (err, states) => {
-    process.send(JSON.stringify(states))
-    process.disconnect()
-  })
+  }, (err, states) => process.send(JSON.stringify(states)))
 })
