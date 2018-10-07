@@ -34,8 +34,9 @@ exports.load = (data, next) => {
 
       const game = line[0]
       const name = line[1]
+      const protocol = line[2]
 
-      return `${games}<option value="${game}">${name}</option>`
+      return `${games}<option value="${game}">${name} (${protocol})</option>`
     }, '')
   })
 
