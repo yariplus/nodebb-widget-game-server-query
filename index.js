@@ -8,7 +8,7 @@ const benchpress = require.main.require('benchpressjs')
 const db = require.main.require('./src/database')
 const widgetAdmin = require.main.require('./src/widgets/admin')
 
-let app, interval, child, games = []
+let app, interval, child, games
 
 exports.load = (data, next) => {
   app = data.app
@@ -47,7 +47,7 @@ exports.load = (data, next) => {
   if (!child) child = fork(`${__dirname}/query.js`)
 
   // Get status messages from child.
-  child.on('message', data => db.setObject('gsq', JSON.parse(data)))
+  child.on('message', data => db.setObject('gsq', data))
 
   // Query all hosts every 15 seconds.
   interval = setInterval(() => {
@@ -65,8 +65,6 @@ exports.load = (data, next) => {
           return { type, host, port, port_query }
         }))
       }, [])
-
-      data = JSON.stringify(data)
 
       child.send(data)
     })
@@ -100,16 +98,18 @@ exports.renderWidget = (widget, next) => {
 
   host = host.replace(/[.:]/g, '')
 
-  const key = `${type}${host}${port||''}${port_query||''}`
+  const field = `${type}${host}${port||''}${port_query||''}`
 
-  db.getObjectField('gsq', key, (err, state) => {
+  // Each field is the stringified last query result.
+  db.getObjectField('gsq', field, (err, state) => {
     if (err || !state) {
       // TODO
       widget.html = ''
-      console.log(`No template ${key}`)
+      console.log(`No status for field: "${field}"`)
       return next(null, widget)
     }
 
+    // Parse the query state string and restringify in pretty print.
     state = JSON.parse(state)
     state.data = '<pre>' + JSON.stringify(state, null, 4) + '</pre>'
 
