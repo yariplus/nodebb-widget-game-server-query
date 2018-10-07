@@ -13,9 +13,11 @@ let app, interval, child, games = []
 exports.load = (data, next) => {
   app = data.app
 
-  fs.readFile(path.normalize(__dirname + '/node_modules/gamedig/games.txt'), 'utf8', (err, data) => {
+  const filename = path.normalize(path.join(path.dirname(require.resolve('gamedig')), '..' , 'games.txt'))
+
+  fs.readFile(filename, 'utf8', (err, data) => {
     if (err) {
-      console.log(err)
+      return console.log(err)
     }
 
     data = data.split('\n')
