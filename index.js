@@ -91,7 +91,7 @@ exports.getWidgets = (widgets, next) => {
   })
 }
 
-exports.renderWidget = (widget, next) => {
+exports.renderWidget = (widget) => new Promise(async (accept, reject) => {
   let { type, host, port, port_query, template } = widget.data
 
   if (!type || !host) return next(new Error('No host information for GSQ widget.'))
@@ -101,28 +101,28 @@ exports.renderWidget = (widget, next) => {
   const field = `${type}${host}${port||''}${port_query||''}`
 
   // Each field is the stringified last query result.
-  db.getObjectField('gsq', field, (err, state) => {
-    if (err || !state) {
-      // TODO
-      widget.html = ''
-      console.log(`No status for field: "${field}"`)
-      return next(null, widget)
-    }
+  let state = await db.getObjectField('gsq', field)
+  let html
 
-    // Parse the query state string and restringify in pretty print.
-    state = JSON.parse(state)
-    state.data = '<pre>' + JSON.stringify(state, null, 4) + '</pre>'
+  if (!state) {
+    // TODO
+    widget.html = ''
+    console.log(`No status for field: "${field}"`)
+    accept(widget)
+  }
 
-    if (template) {
-      benchpress.compileParse(template, state, (err, html) => {
-        widget.html = html
-        next(err, widget)
-      })
-    } else {
-      app.render('gsqwidget', state, (err, html) => {
-        widget.html = html
-        next(err, widget)
-      })
-    }
-  })
-}
+  // Parse the query state string and restringify in pretty print.
+  state = JSON.parse(state)
+  state.data = '<pre>' + JSON.stringify(state, null, 4) + '</pre>'
+
+  if (template) {
+    html = await benchpress.compileRender(template, state)
+  } else {
+    html = await app.render('gsqwidget', state)
+  }
+
+  widget.html = html
+
+  accept(widget)
+})
+
