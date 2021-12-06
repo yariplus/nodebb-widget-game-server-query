@@ -16,7 +16,6 @@
   ],
   "license": "(CC0-1.0 OR MIT)",
   "dependencies": {
-    "async": "^3.2.2",
     "gamedig": "^3.0.7"
   },
   "author": {
