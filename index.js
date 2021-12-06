@@ -10,7 +10,7 @@ const widgetAdmin = require.main.require('./src/widgets/admin')
 
 let app, interval, child, games
 
-exports.load = (data, next) => {
+exports.load = (data) => new Promise(async (accept, reject) => {
   app = data.app
 
   const filename = path.normalize(path.join(path.dirname(require.resolve('gamedig')), '..' , 'games.txt'))
@@ -32,11 +32,11 @@ exports.load = (data, next) => {
       line = line.split('|')
       if (!line.length > 1) return games
 
-      const game = line[0]
-      const name = line[1]
       const protocol = line[2]
+      const name = line[1]
+      const id = line[0].split(',')[0]
 
-      return `${games}<option value="${game}">${name} (${protocol})</option>`
+      return `${games}<option value="${id}">${name} (${protocol})</option>`
     }, '')
   })
 
@@ -50,28 +50,44 @@ exports.load = (data, next) => {
   child.on('message', data => db.setObject('gsq', data))
 
   // Query all hosts every 15 seconds.
-  interval = setInterval(() => {
+  interval = setInterval(async () => {
+    let areas, widgets, servers = [], keys = []
 
     // Get all widgets.
-    widgetAdmin.get((err, data) => {
-      if (err) return console.log(err)
+    areas = await widgetAdmin.getAreas()
+    areas = areas.filter(area => area.name !== 'Draft Zone')
 
-      // Filter gsq widgets.
-      // TODO: Need to make this less messy.
-      data = data.areas.reduce((widgets, area) => {
-        return widgets.concat(area.data.filter(widget => widget.widget === 'gsq').filter(widget => widget.data.type && widget.data.host).map(widget => {
+    // Filter to gsq widgets.
+    widgets = areas.reduce((widgets, area) => widgets.concat(
+      area.data.filter(widget => widget.widget === 'gsq')
+        .filter(widget => widget.data.type && widget.data.host)
+        .map(widget => {
           const { type, host, port, port_query } = widget.data
 
-          return { type, host, port, port_query }
-        }))
-      }, [])
+          let server = { type, host }
 
-      child.send(data)
+          // Optional port inputs.
+          if (port) server.port = port
+          if (port_query) server.port_query = port_query
+
+          server.key = `${type}${host.replace(/[.:]/g, '')}${port||''}${port_query||''}`
+
+          return server
+        })
+    ), [])
+
+    widgets.forEach(widget => {
+      if (keys.indexOf(widget.key) === -1) {
+        keys = keys.concat(widget.key)
+        servers = servers.concat(widget)
+      }
     })
+
+    if (servers) child.send(servers)
   }, 15000)
 
-  next()
-}
+  accept()
+})
 
 exports.getWidgets = (widgets, next) => {
   app.render('gsqwidgetedit', {games}, (err, content) => {
@@ -118,7 +134,7 @@ exports.renderWidget = (widget) => new Promise(async (accept, reject) => {
   if (template) {
     html = await benchpress.compileRender(template, state)
   } else {
-    html = await app.render('gsqwidget', state)
+    html = await app.renderAsync('gsqwidget', state)
   }
 
   widget.html = html
