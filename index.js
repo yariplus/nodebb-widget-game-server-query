@@ -89,23 +89,24 @@ exports.load = (data) => new Promise(async (accept, reject) => {
   accept()
 })
 
-exports.getWidgets = (widgets, next) => {
-  app.render('gsqwidgetedit', {games}, (err, content) => {
-    if (err) {
-      console.log(err)
-      return next(null, widgets)
-    }
+exports.getWidgets = (widgets) => new Promise(async (accept, reject) => {
+  let content
 
-    widgets.push({
-      widget: 'gsq',
-      name: 'Game Server Query',
-      description: 'Queries a game server.',
-      content
-    })
+  try {
+    content = await app.renderAsync('gsqwidgetedit', {games})
+  } catch (err) {
+    return reject(err)
+  }
 
-    next(null, widgets)
+  widgets.push({
+    widget: 'gsq',
+    name: 'Game Server Query',
+    description: 'Queries a game server.',
+    content
   })
-}
+
+  accept(widgets)
+})
 
 exports.renderWidget = (widget) => new Promise(async (accept, reject) => {
   let { type, host, port, port_query, template } = widget.data
