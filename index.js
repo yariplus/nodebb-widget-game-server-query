@@ -87,24 +87,21 @@ exports.load = async nodebb => {
   }, 15000)
 }
 
-exports.getWidgets = (widgets) => new Promise(async (accept, reject) => {
-  let content
-
+exports.getWidgets = async widgets => {
   try {
-    content = await app.renderAsync('gsqwidgetedit', {games})
+    widgets.push({
+      widget: 'gsq',
+      name: 'Game Server Query',
+      description: 'Queries a game server.',
+      content: await app.renderAsync('gsqwidgetedit', {games}),
+    })
   } catch (err) {
-    return reject(err)
+    console.log('Error parsing nodebb-widget-game-server-query admin widgets.')
+    console.log(err)
+  } finally {
+    return widgets
   }
-
-  widgets.push({
-    widget: 'gsq',
-    name: 'Game Server Query',
-    description: 'Queries a game server.',
-    content
-  })
-
-  accept(widgets)
-})
+}
 
 exports.renderWidget = (widget) => new Promise(async (accept, reject) => {
   let { type, host, port, port_query, template } = widget.data
