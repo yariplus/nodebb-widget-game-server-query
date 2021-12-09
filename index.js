@@ -103,38 +103,36 @@ exports.getWidgets = async widgets => {
   }
 }
 
-exports.renderWidget = (widget) => new Promise(async (accept, reject) => {
+exports.renderWidget = async widget => {
   let { type, host, port, port_query, template } = widget.data
+  let feild, state
 
-  if (!type || !host) return next(new Error('No host information for GSQ widget.'))
+  if (!type || !host) {
+    console.log('No host or type information for GSQ widget.')
+    return widget
+  }
 
-  host = host.replace(/[.:]/g, '')
-
-  const field = `${type}${host}${port||''}${port_query||''}`
-
-  // Each field is the stringified last query result.
-  let state = await db.getObjectField('gsq', field)
-  let html
+  // The widget field is the stringified last query result.
+  field = `${type}${host.replace(/[.:]/g, '')}${port||''}${port_query||''}`
+  state = await db.getObjectField('gsq', field)
 
   if (!state) {
     // TODO
-    widget.html = ''
-    console.log(`No status for field: "${field}"`)
-    accept(widget)
+    console.log(`No status for GSQ field: "${field}"`)
+    return widget
   }
 
   // Parse the query state string and restringify in pretty print.
   state = JSON.parse(state)
   state.data = '<pre>' + JSON.stringify(state, null, 4) + '</pre>'
 
+  // Use the user template or the default template.
   if (template) {
-    html = await benchpress.compileRender(template, state)
+    widget.html = await benchpress.compileRender(template, state)
   } else {
-    html = await app.renderAsync('gsqwidget', state)
+    widget.html = await app.renderAsync('gsqwidget', state)
   }
 
-  widget.html = html
-
-  accept(widget)
-})
+  return widget
+}
 
