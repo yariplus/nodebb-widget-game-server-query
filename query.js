@@ -3,21 +3,23 @@
 
 const { query } = require('gamedig')
 
-process.on('message', async (servers) => {
+let getquery = async server => {
+  let result
+
+  try {
+    result = await query(server)
+  } catch (err) {
+    result = { err }
+  }
+
+  result.key = server.key
+
+  return result
+}
+
+process.on('message', async servers => {
   // Query servers async.
-  let results = await Promise.all(servers.map(async (server) => {
-    let result
-
-    try {
-      result = await query(server)
-    } catch (err) {
-      result = err
-    }
-
-    result.key = server.key
-
-    return result
-  }, []))
+  let results = await Promise.all(servers.map(getquery, []))
 
   // Reduce results to a db object.
   results = results.reduce((results, result) => {
@@ -27,6 +29,6 @@ process.on('message', async (servers) => {
   }, {})
 
   // Send results back for storage in the db.
-  process.send(results)
+  process.send(results, undefined, undefined, e => {})
 })
 
