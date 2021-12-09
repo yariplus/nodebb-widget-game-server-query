@@ -1,44 +1,42 @@
 // nodebb-widget-game-server-query
 // index.js
 
-const fs = require('fs')
+const { promises: fs } = require('fs')
 const path = require('path')
 const { fork } = require('child_process')
+
 const benchpress = require.main.require('benchpressjs')
 const db = require.main.require('./src/database')
 const widgetAdmin = require.main.require('./src/widgets/admin')
 
 let app, interval, child, games
 
-exports.load = (data) => new Promise(async (accept, reject) => {
-  app = data.app
+exports.load = async nodebb => {
+  // Get app for rendering.
+  app = nodebb.app
 
+  // Find the gamedig path and read its game db.
   const filename = path.normalize(path.join(path.dirname(require.resolve('gamedig')), '..' , 'games.txt'))
+  const file = await fs.readFile(filename, 'utf8')
 
-  fs.readFile(filename, 'utf8', (err, data) => {
-    if (err) {
-      return console.log(err)
-    }
+  // Parse the file into games html for the widget admin panel.
+  // TODO: Could be a template.
+  games = file.split('\n').reduce((games, line) => {
+    const comment = line.indexOf('#')
+    if (comment !== -1) line = line.substr(0, comment)
 
-    data = data.split('\n')
+    line = line.trim()
+    if (!line) return games
 
-    games = data.reduce((games, line) => {
-      const comment = line.indexOf('#')
-      if (comment !== -1) line = line.substr(0, comment)
+    line = line.split('|')
+    if (!line.length > 1) return games
 
-      line = line.trim()
-      if (!line) return games
+    const protocol = line[2]
+    const name = line[1]
+    const id = line[0].split(',')[0]
 
-      line = line.split('|')
-      if (!line.length > 1) return games
-
-      const protocol = line[2]
-      const name = line[1]
-      const id = line[0].split(',')[0]
-
-      return `${games}<option value="${id}">${name} (${protocol})</option>`
-    }, '')
-  })
+    return `${games}<option value="${id}">${name} (${protocol})</option>`
+  }, '')
 
   // Clear any previous query interval.
   if (interval) clearInterval(interval)
@@ -50,6 +48,7 @@ exports.load = (data) => new Promise(async (accept, reject) => {
   child.on('message', data => db.setObject('gsq', data))
 
   // Query all hosts every 15 seconds.
+  // TODO: Configurable timeout per widget.
   interval = setInterval(async () => {
     let areas, widgets, servers = [], keys = []
 
@@ -76,6 +75,7 @@ exports.load = (data) => new Promise(async (accept, reject) => {
         })
     ), [])
 
+    // Ignore widgets with the same server settings.
     widgets.forEach(widget => {
       if (keys.indexOf(widget.key) === -1) {
         keys = keys.concat(widget.key)
@@ -85,9 +85,7 @@ exports.load = (data) => new Promise(async (accept, reject) => {
 
     if (servers) child.send(servers)
   }, 15000)
-
-  accept()
-})
+}
 
 exports.getWidgets = (widgets) => new Promise(async (accept, reject) => {
   let content
